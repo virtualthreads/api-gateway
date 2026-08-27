@@ -23,7 +23,7 @@ public class SecurityConfig {
                 .formLogin(form ->
                     form.loginPage("/ui/login")
                             .loginProcessingUrl("/ui/login")
-                            .defaultSuccessUrl("/ui/profile", true)
+                            .defaultSuccessUrl("/ui/home", true)
                             .permitAll()
                 );
         return security.build();
