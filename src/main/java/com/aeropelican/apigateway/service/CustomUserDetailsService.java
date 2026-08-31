@@ -1,7 +1,5 @@
 package com.aeropelican.apigateway.service;
 
-import com.aeropelican.apigateway.client.dto.AuthUser;
-import com.aeropelican.apigateway.client.userclients.UserClient;
 import com.aeropelican.commonsservice.user.clients.UserServiceClient;
 import com.aeropelican.commonsservice.user.dto.response.ApiResponse;
 import com.aeropelican.commonsservice.user.dto.response.UserAuthResponse;
