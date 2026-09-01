@@ -6,6 +6,7 @@ import com.aeropelican.commonsservice.user.dto.response.UserAuthResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -28,6 +29,7 @@ public class CustomUserDetailsService implements UserDetailsService {
         return User
                 .withUsername(userAuthResponse.email())
                 .password(userAuthResponse.passwordHash())
+                .authorities("ROLE_ADMIN")
                 .build();
     }
 }
