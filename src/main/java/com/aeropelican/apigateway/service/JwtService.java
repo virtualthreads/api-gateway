@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import javax.crypto.SecretKey;
 import java.util.Date;
 import java.util.List;
+import java.util.UUID;
 import java.util.function.Function;
 
 @Service
@@ -27,15 +28,28 @@ public class JwtService {
                 .toList();
         return Jwts.builder()
                 .subject(userDetails.getUsername())
+                .claim("userId", extractUserId(userDetails))
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date(System.currentTimeMillis() + JWT_EXPIRY_TIME))
                 .claim("roles", roles)
-                .signWith(getSigningKey())
+                .signWith(getSigningKey(), Jwts.SIG.HS384)
                 .compact();
+    }
+
+    private UUID extractUserId(UserDetails userDetails) {
+        if (userDetails instanceof AuthenticatedUser authenticatedUser) {
+            return authenticatedUser.getUserId();
+        }
+        return null;
     }
 
     public String extractUserName(String token) {
         return extractClaim(token, Claims::getSubject);
+    }
+
+    public UUID extractUserId(String token) {
+        Object userId = extractAllClaims(token).get("userId");
+        return userId == null ? null : UUID.fromString(userId.toString());
     }
 
     public List<String> extractRoles(String token) {
@@ -52,6 +66,12 @@ public class JwtService {
     public boolean isTokenValid(String token, UserDetails userDetails) {
         final String username = extractUserName(token);
         return (username.equals(userDetails.getUsername()) && !isTokenExpired(token));
+    }
+
+    public boolean isTokenValid(String token) {
+        Claims claims = extractAllClaims(token);
+        return claims.getSubject() != null && !claims.getSubject().isBlank()
+                && claims.getExpiration() != null && claims.getExpiration().after(new Date());
     }
 
     private boolean isTokenExpired(String token) {

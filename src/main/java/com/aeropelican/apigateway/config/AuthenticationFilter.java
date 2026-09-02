@@ -1,51 +1,57 @@
 package com.aeropelican.apigateway.config;
 
 import com.aeropelican.apigateway.service.JwtService;
+import com.aeropelican.apigateway.service.AuthenticatedUser;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.UUID;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class AuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
-    private final UserDetailsService userDetailsService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         final String authHeader = request.getHeader("Authorization");
 
-        if (authHeader == null || !authHeader.startsWith("Bearer")) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
         final String token = authHeader.substring(7);
         final String username = jwtService.extractUserName(token);
+        final UUID userId = jwtService.extractUserId(token);
         List<String> roles = jwtService.extractRoles(token);
 
         if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-
+            log.info("Attempting to validate the token");
             List<SimpleGrantedAuthority> authorities = roles.stream()
-                    .map(SimpleGrantedAuthority::new)
+                    .map(role -> new SimpleGrantedAuthority(
+                            role.startsWith("ROLE_") ? role : "ROLE_" + role
+                    ))
                     .toList();
-            UserDetails userDetails = this.userDetailsService.loadUserByUsername(username);
-
-            if (jwtService.isTokenValid(token, userDetails)) {
+            log.info("Authorities had been loaded successfully");
+            if (jwtService.isTokenValid(token)) {
+                log.info("Token is valid");
+                UserDetails userDetails = new AuthenticatedUser(userId, username, null, authorities);
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                         userDetails,
                         null,
@@ -53,6 +59,8 @@ public class AuthenticationFilter extends OncePerRequestFilter {
                 );
                 authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
+            } else {
+                log.info("Token is invalid");
             }
         }
         filterChain.doFilter(request, response);
